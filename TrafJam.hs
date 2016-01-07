@@ -1,7 +1,9 @@
+import System.Environment
 import Graphics.UI.GLFW           
 import Graphics.Rendering.OpenGL
 import GHC.Float
 import System.Exit
+import Data.Functor
 
 title = "Traffic Jam"
 
@@ -11,7 +13,7 @@ winSize = 600
    
 data Car = Car  -- ^ Вертикально расположенная машина.
    {
-     dir :: Int,
+     dir :: Int, -- 1 == vert, 2 == horiz
      x :: Int,  -- ^ Местоположение машины (её «головы»).
      y :: Int,
      lngth :: Int  -- ^ Длина машины в клетках доски.
@@ -30,10 +32,26 @@ main = do
    
     windowCloseCallback $= exitWith ExitSuccess
     windowSizeCallback  $= (\size -> viewport $= (Position 0 0, size))
+    args <- getArgs
+    if length args /= 1 then do
+      putStrLn "FILE!"
+      return()
+    else do
+      cars <- getCarsFromFile (args!!0)
+      loop cars
+    --let cars = [(Car 1 1 1 3),(Car 0 0 0 2),(Car 0 2 4 2)]
 
-    let cars = [(Car 1 1 1 3),(Car 0 0 0 2),(Car 0 2 4 2)]
+getCarsFromFile :: FilePath -> IO [Car]
+getCarsFromFile f = do 
+  content <- readFile f
+  return (parseCars (lines content))
 
-    loop cars
+parseCars :: [String] -> [Car]
+parseCars [] = []
+parseCars (x:xs) = do
+  toCar(map (read) (words x)::[Int]):parseCars xs
+
+toCar ([dir,x,y,ln]) = Car dir x y ln
 
 loop cars = do
     display cars
@@ -47,7 +65,6 @@ display cars = do
   color green
   fatline 598 200 598 300
   --circle 600 600 10
-
   swapBuffers
 
 printCars [] = return()
@@ -82,7 +99,7 @@ carCoord c =
   renderPrimitive Quads $ mapM_ (uncurry vertex2f) (coords c)
   where
     coords (c@(Car dir x y len))
-      | dir == 1 = [(toScale1 x, toScale1 y),(toScale2 (x+1), toScale1 y),
+      | dir == 1 = [(toScale1 x, toScale1 y),(toScale2 (x+1), toScale1 y), 
                                 (toScale2 (x+1), toScale2 (y+len)), (toScale1 x, toScale2 (y+len))]
       | dir == 0 = [(toScale1 x, toScale1 y),(toScale2 (x+len), toScale1 y),
                                 (toScale2 (x+len), toScale2 (y+1)), (toScale1 x, toScale2 (y+1))]
@@ -91,10 +108,10 @@ carCoord c =
 toScale1 n = realToFrac(n * 100)+3
 toScale2 n = realToFrac(n * 100)-3
 
-circle :: GLfloat -> GLfloat -> GLfloat -> IO ()
+{-circle :: GLfloat -> GLfloat -> GLfloat -> IO ()
 circle cx cy rad = 
   renderPrimitive Polygon $ mapM_ (uncurry vertex2f) points
   where n = 50
         points = zip xs ys
         xs = fmap (\x -> cx + rad * sin (2*pi*x/n)) [0 .. n]
-        ys = fmap (\x -> cy + rad * cos (2*pi*x/n)) [0 .. n]
+        ys = fmap (\x -> cy + rad * cos (2*pi*x/n)) [0 .. n] -}
