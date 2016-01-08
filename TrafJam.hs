@@ -63,7 +63,14 @@ loop cars = do
   display cars
   newCarsMouse <- mouseOnCar cars
   newCarsKeyboard <- keyboardOnCar newCarsMouse  
+  --if isOver then do
+  --openWindow (Size winSize winSize) [] Window
+  --windowTitle $= "ASDASD"  
+--  return ()
+  --else 
   loop newCarsKeyboard
+
+isOver = True
 
 gX (Car _ x _ _ _) = x
 gY (Car _ _ y _ _) = y
@@ -121,24 +128,23 @@ moveCars cars (c:cs) car dir =
 
 moveCar :: [Car] -> Car -> Dir -> Car
 moveCar cars (carToMove@(Car d x y ln col)) direc 
-  | direc == ToUp = if isEmpty cars (getAddCoordXY carToMove (0,(-1))) then (Car d x (y-1) ln col) else carToMove
-  | direc == ToDown = if y+ln+1<=6 && isEmpty cars (getAddCoordXY carToMove (0,1)) then (Car d x (y+1) ln col) else carToMove
-  | direc == ToLeft = if isEmpty cars (getAddCoordXY carToMove ((-1),0)) then (Car d (x-1) y ln col) else carToMove
-  | direc == ToRight = if x+ln+1<=6 && isEmpty cars (getAddCoordXY carToMove (1,0)) then (Car d (x+1) y ln col) else carToMove
+  | direc == ToUp = if isEmpty cars (getAddCoordXY carToMove (0,(-1))) carToMove then (Car d x (y-1) ln col) else carToMove
+  | direc == ToDown = if y+ln+1<=6 && isEmpty cars (getAddCoordXY carToMove (0,ln)) carToMove then (Car d x (y+1) ln col) else carToMove
+  | direc == ToLeft = if isEmpty cars (getAddCoordXY carToMove ((-1),0)) carToMove then (Car d (x-1) y ln col) else carToMove
+  | direc == ToRight = if x+ln+1<=6 && isEmpty cars (getAddCoordXY carToMove (ln,0)) carToMove then (Car d (x+1) y ln col) else carToMove
 
-isEmpty ::  [Car] -> (Integer,Integer) -> Bool
-isEmpty [] _ = True
-isEmpty ((c@(Car _ x y _ _)):cs) (xx,yy) = 
+isEmpty ::  [Car] -> (Integer,Integer) -> Car -> Bool
+isEmpty [] _ _ = True
+isEmpty ((c@(Car d x y ln _)):cs) (xx,yy) carToMove = 
   if inField (xx,yy) then do
-    let [(x1,y1),p2,(x2,y2),p4] = coords2 c :: [(Integer,Integer)]
-    if x1 <= xx && xx <= x2 && y1 <= yy && yy <= y2 then 
-      False 
-    else isEmpty cs (xx,yy) 
+    --let [(x1,y1),p2,(x2,y2),p4] = coords2 c :: [(Integer,Integer)] --xx <= x2 && y1 <= yy && yy <= y2 
+    if c /= carToMove && ((d == 1 && x == xx && y <= yy && yy < y+ln) || 
+      (d == 0 && y == yy && x <= xx && xx < x+ln)) then False
+--    if x1-3 <= xx && y1-3 <= yy && xx+100 <= x2+3 && yy+100 <= y2+3 then False       
+    else isEmpty cs (xx,yy) carToMove
   else False
   
 inField (x, y) = x >= 0 && x < 600 && y >= 0 && y < 600
-   
-   
    
 findOrangeCar :: [Car] -> Maybe Car
 findOrangeCar [] = Nothing
@@ -230,7 +236,7 @@ fatline ax ay bx by = renderPrimitive Lines $ do
 
 getColor (Car _ _ _ _ col) = col
 getDirection (Car dir _ _ _ _) = dir
-getAddCoordXY (Car _ x y _ _) (a,b) = ((x+a)*100,(y+b)*100)
+getAddCoordXY (Car _ x y _ _) (a,b) = (x+a,y+b)
 getCarLength (Car _ _ _ ln _) = ln
 
 --х у len vert\goriz 
