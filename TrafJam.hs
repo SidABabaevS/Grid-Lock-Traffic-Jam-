@@ -16,14 +16,16 @@ winSize = 600
    
 data Car = Car  -- ^ Вертикально расположенная машина.
    {
-     dir :: Int, -- 1 == vert, 0 == horiz
-     x :: Int,  -- Местоположение машины (её «головы»).
-     y :: Int,
-     lngth :: Int,  -- Длина машины в клетках доски.
+     dir :: Integer, -- 1 == vert, 0 == horiz
+     x :: Integer,  -- Местоположение машины (её «головы»).
+     y :: Integer,
+     lngth :: Integer,  -- Длина машины в клетках доски.
      carColor :: Color4 GLfloat
    }
   deriving (Eq, Ord, Show)
 
+data Dir = ToLeft | ToRight | ToUp | ToDown
+  deriving (Eq, Show)  
 --cars :: [Car]
 
 main = do
@@ -53,31 +55,97 @@ getCarsFromFile f = do
 parseCars :: [String] -> [Car]
 parseCars [] = []
 parseCars (x:xs) = do
-  toCar(map (read) (words x)::[Int]):parseCars xs
+  toCar(map (read) (words x)::[Integer]):parseCars xs
 
 toCar ([dir,x,y,ln]) = if dir == 0 && y == 2 then Car dir x y ln green else Car dir x y ln red
 
 loop cars = do
   display cars
   newCarsMouse <- mouseOnCar cars
-  newCarsKeyboard <- keyboardOnCar
-  loop newCarsMouse
+  newCarsKeyboard <- keyboardOnCar newCarsMouse  
+  loop newCarsKeyboard
 
-keyboardOnCar = do
+gX (Car _ x _ _ _) = x
+gY (Car _ _ y _ _) = y
+
+keyboardOnCar :: [Car] -> IO [Car]
+keyboardOnCar cars = do
   l <- getKey 65
   r <- getKey 68
   u <- getKey 87
   d <- getKey 83
-  if (l == Press) then 
-    putStrLn "L"
-  else if (r == Press) then 
-    putStrLn "R"
-  else if (u == Press) then 
-    putStrLn "U"
-  else if (d == Press) then 
-    putStrLn "D"
-  else return()
+  if l == Press then do
+	return (turnLeft cars)
+  else if r == Press then 
+    return (turnRight cars)
+  else if u == Press then 
+    return (turnUp cars)
+  else if d == Press then 
+    return (turnDown cars)
+  else return cars
 
+turnLeft :: [Car] -> [Car]
+turnLeft cars = do
+  let c = findOrangeCar cars
+  if isJust c then
+	if getDirection (fromJust c) == 0 then (moveCars cars cars (fromJust c) ToLeft) else cars 
+  else cars	
+
+turnRight :: [Car] -> [Car]
+turnRight cars = do
+  let c = findOrangeCar cars
+  if isJust c then
+	if getDirection (fromJust c) == 0 then (moveCars cars cars (fromJust c) ToRight) else cars 
+  else cars
+   
+turnUp :: [Car] -> [Car]
+turnUp cars = do
+  let c = findOrangeCar cars
+  if isJust c then
+	if getDirection (fromJust c) == 1 then (moveCars cars cars (fromJust c) ToUp) else cars 
+  else cars
+   
+turnDown :: [Car] -> [Car]
+turnDown cars = do
+  let c = findOrangeCar cars
+  if isJust c then
+	if getDirection (fromJust c) == 1 then (moveCars cars cars (fromJust c) ToDown) else cars 
+  else cars	  
+
+moveCars :: [Car] -> [Car] -> Car -> Dir -> [Car]
+moveCars _ [] _ _ = []
+moveCars cars (c:cs) car dir = 
+  if c == car then 
+    (moveCar cars car dir):(moveCars cars cs car dir) 
+  else c:(moveCars cars cs car dir)
+
+moveCar :: [Car] -> Car -> Dir -> Car
+moveCar cars (carToMove@(Car d x y ln col)) direc 
+  | direc == ToUp = if isEmpty cars (getAddCoordXY carToMove (0,(-1))) then (Car d x (y-1) ln col) else carToMove
+  | direc == ToDown = if y+ln+1<=6 && isEmpty cars (getAddCoordXY carToMove (0,1)) then (Car d x (y+1) ln col) else carToMove
+  | direc == ToLeft = if isEmpty cars (getAddCoordXY carToMove ((-1),0)) then (Car d (x-1) y ln col) else carToMove
+  | direc == ToRight = if x+ln+1<=6 && isEmpty cars (getAddCoordXY carToMove (1,0)) then (Car d (x+1) y ln col) else carToMove
+
+isEmpty ::  [Car] -> (Integer,Integer) -> Bool
+isEmpty [] _ = True
+isEmpty ((c@(Car _ x y _ _)):cs) (xx,yy) = 
+  if inField (xx,yy) then do
+    let [(x1,y1),p2,(x2,y2),p4] = coords2 c :: [(Integer,Integer)]
+    if x1 <= xx && xx <= x2 && y1 <= yy && yy <= y2 then 
+      False 
+    else isEmpty cs (xx,yy) 
+  else False
+  
+inField (x, y) = x >= 0 && x < 600 && y >= 0 && y < 600
+   
+   
+   
+findOrangeCar :: [Car] -> Maybe Car
+findOrangeCar [] = Nothing
+findOrangeCar (c:cs) = if (getColor c) == orange then 
+    Just c
+  else findOrangeCar cs
+   
 mouseOnCar :: [Car] -> IO [Car]
 mouseOnCar cars = do
   mbl <- getMouseButton ButtonLeft
@@ -161,19 +229,31 @@ fatline ax ay bx by = renderPrimitive Lines $ do
     vertex2f (bx+1) by
 
 getColor (Car _ _ _ _ col) = col
+getDirection (Car dir _ _ _ _) = dir
+getAddCoordXY (Car _ x y _ _) (a,b) = ((x+a)*100,(y+b)*100)
+getCarLength (Car _ _ _ ln _) = ln
 
 --х у len vert\goriz 
 carCoord :: Car -> IO ()
 carCoord c = 
   letsDraw (mapM_ (uncurry vertex2f) (coords c)) (getColor c)
-  where
-    coords (c@(Car dir x y len _ ))
-      | dir == 1 = [(toScale1 x, toScale1 y),(toScale2 (x+1), toScale1 y), 
-                                (toScale2 (x+1), toScale2 (y+len)), (toScale1 x, toScale2 (y+len))]
-      | dir == 0 = [(toScale1 x, toScale1 y),(toScale2 (x+len), toScale1 y),
-                                (toScale2 (x+len), toScale2 (y+1)), (toScale1 x, toScale2 (y+1))]
-      | otherwise = error "Craft the Coords!"
 
+--coords :: Fractional Integer => Car -> 
+coords (c@(Car dir x y len _ ))
+  | dir == 1 = [(toScale1 x, toScale1 y),(toScale2 (x+1), toScale1 y), 
+							(toScale2 (x+1), toScale2 (y+len)), (toScale1 x, toScale2 (y+len))]
+  | dir == 0 = [(toScale1 x, toScale1 y),(toScale2 (x+len), toScale1 y),
+							(toScale2 (x+len), toScale2 (y+1)), (toScale1 x, toScale2 (y+1))]
+  | otherwise = error "Create the Coords!"
+
+coords2 (c@(Car dir x y len _ ))
+  | dir == 1 = [(toScale11 x, toScale11 y),(toScale22 (x+1), toScale11 y), 
+							(toScale22 (x+1), toScale22 (y+len)), (toScale11 x, toScale22 (y+len))]
+  | dir == 0 = [(toScale11 x, toScale11 y),(toScale22 (x+len), toScale11 y),
+							(toScale22 (x+len), toScale22 (y+1)), (toScale11 x, toScale22 (y+1))]
+  | otherwise = error "Create the Coords!"
+
+  
 letsDraw coords col = do
   color col
   renderPrimitive Quads coords
@@ -181,6 +261,9 @@ letsDraw coords col = do
 
 toScale1 n = realToFrac(n * 100)+3
 toScale2 n = realToFrac(n * 100)-3
+
+toScale11 n = (n * 100)+3
+toScale22 n = (n * 100)-3
 
 {-circle :: GLfloat -> GLfloat -> GLfloat -> IO ()
 circle cx cy rad = 
