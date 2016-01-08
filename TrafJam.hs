@@ -63,14 +63,8 @@ loop cars = do
   display cars
   newCarsMouse <- mouseOnCar cars
   newCarsKeyboard <- keyboardOnCar newCarsMouse  
-  --if isOver then do
-  --openWindow (Size winSize winSize) [] Window
-  --windowTitle $= "ASDASD"  
---  return ()
-  --else 
   loop newCarsKeyboard
 
-isOver = True
 
 gX (Car _ x _ _ _) = x
 gY (Car _ _ y _ _) = y
@@ -82,13 +76,17 @@ keyboardOnCar cars = do
   u <- getKey 87
   d <- getKey 83
   if l == Press then do
-	return (turnLeft cars)
-  else if r == Press then 
-    return (turnRight cars)
-  else if u == Press then 
-    return (turnUp cars)
-  else if d == Press then 
-    return (turnDown cars)
+    sleep 0.2
+    return (turnLeft cars)
+  else if r == Press then do
+      sleep 0.2
+      return (turnRight cars)
+  else if u == Press then do
+      sleep 0.2
+      return (turnUp cars)
+  else if d == Press then do
+      sleep 0.2
+      return (turnDown cars)
   else return cars
 
 turnLeft :: [Car] -> [Car]
@@ -262,8 +260,7 @@ coords2 (c@(Car dir x y len _ ))
   
 letsDraw coords col = do
   color col
-  renderPrimitive Quads coords
-  
+  renderPrimitive Quads coords  
 
 toScale1 n = realToFrac(n * 100)+3
 toScale2 n = realToFrac(n * 100)-3
@@ -271,10 +268,3 @@ toScale2 n = realToFrac(n * 100)-3
 toScale11 n = (n * 100)+3
 toScale22 n = (n * 100)-3
 
-{-circle :: GLfloat -> GLfloat -> GLfloat -> IO ()
-circle cx cy rad = 
-  renderPrimitive Polygon $ mapM_ (uncurry vertex2f) points
-  where n = 50
-        points = zip xs ys
-        xs = fmap (\x -> cx + rad * sin (2*pi*x/n)) [0 .. n]
-        ys = fmap (\x -> cy + rad * cos (2*pi*x/n)) [0 .. n] -}
