@@ -59,9 +59,24 @@ toCar ([dir,x,y,ln]) = if dir == 0 && y == 2 then Car dir x y ln green else Car 
 
 loop cars = do
   display cars
-  newCars <- mouseOnCar cars
+  newCarsMouse <- mouseOnCar cars
+  newCarsKeyboard <- keyboardOnCar
+  loop newCarsMouse
 
-  loop newCars
+keyboardOnCar = do
+  l <- getKey 65
+  r <- getKey 68
+  u <- getKey 87
+  d <- getKey 83
+  if (l == Press) then 
+    putStrLn "L"
+  else if (r == Press) then 
+    putStrLn "R"
+  else if (u == Press) then 
+    putStrLn "U"
+  else if (d == Press) then 
+    putStrLn "D"
+  else return()
 
 mouseOnCar :: [Car] -> IO [Car]
 mouseOnCar cars = do
