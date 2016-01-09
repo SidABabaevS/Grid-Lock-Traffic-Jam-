@@ -61,13 +61,30 @@ toCar ([dir,x,y,ln]) = if dir == 0 && y == 2 then Car dir x y ln green else Car 
 
 loop cars = do
   display cars
-  newCarsMouse <- mouseOnCar cars
-  newCarsKeyboard <- keyboardOnCar newCarsMouse  
-  loop newCarsKeyboard
+  let c = isOver cars
+  if isJust c then do
+    putStrLn "YOU WIN!"
+    blinking cars (fromJust c)
+  else do
+    newCarsMouse <- mouseOnCar cars
+    newCarsKeyboard <- keyboardOnCar newCarsMouse  
+    loop newCarsKeyboard
 
+isOver [] = Nothing
+isOver (c@(Car d x y ln _):cs) = if d == 0 && y == 2 && x + ln - 1 == 5 then Just c 
+  else isOver cs
 
-gX (Car _ x _ _ _) = x
-gY (Car _ _ y _ _) = y
+blinking cars car = do
+  letsDraw (mapM_ (uncurry vertex2f) (coords car)) cyan
+  swapBuffers
+  sleep 0.5
+  letsDraw (mapM_ (uncurry vertex2f) (coords car)) yellow
+  swapBuffers
+  sleep 0.5
+  letsDraw (mapM_ (uncurry vertex2f) (coords car)) magenta
+  swapBuffers
+  sleep 0.5
+  blinking cars car
 
 keyboardOnCar :: [Car] -> IO [Car]
 keyboardOnCar cars = do
@@ -76,16 +93,16 @@ keyboardOnCar cars = do
   u <- getKey 87
   d <- getKey 83
   if l == Press then do
-    sleep 0.2
+    sleep 0.15
     return (turnLeft cars)
   else if r == Press then do
-      sleep 0.2
+      sleep 0.15
       return (turnRight cars)
   else if u == Press then do
-      sleep 0.2
+      sleep 0.15
       return (turnUp cars)
   else if d == Press then do
-      sleep 0.2
+      sleep 0.15
       return (turnDown cars)
   else return cars
 
@@ -221,6 +238,10 @@ red   = Color4 (1::GLfloat) 0 0 1
 green = Color4 (0::GLfloat) 1 0 1
 orange = Color4 (1::GLfloat) 0.5 0 1
 
+yellow = Color4 (1::GLfloat) 1 0 1
+cyan = Color4 (0::GLfloat) 1 1 1
+magenta = Color4 (1::GLfloat) 0 1 1
+
 -- primitives
 
 fatline :: GLfloat -> GLfloat -> GLfloat -> GLfloat -> IO ()
@@ -258,9 +279,9 @@ coords2 (c@(Car dir x y len _ ))
   | otherwise = error "Create the Coords!"
 
   
-letsDraw coords col = do
+letsDraw c col = do
   color col
-  renderPrimitive Quads coords  
+  renderPrimitive Quads c  
 
 toScale1 n = realToFrac(n * 100)+3
 toScale2 n = realToFrac(n * 100)-3
